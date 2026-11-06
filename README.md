@@ -1,8 +1,17 @@
-# Authors :
-## Léo Berger 
-## Titouan Guibert-Lode
-## Clément Potier
+# Inserting an image within an image (ImageInImage)
+## Authors
+* Léo Berger
+* Titouan Guibert-Lode
+* Clément Potier
 
 # Aim of the project
-The aim of the project is to implement two algorithms for inserting an image into another image: one based on a so-called ‘traditional’ method and another based on an AI method, as well as to improve or create a new algorithm.
-The results obtained will then be tested and compared.
+The aim of the project is to implement, test, and compare two distinct approaches for image steganography, alongside proposing improvements or a novel algorithm:
+
+1. **Traditional Method:** 
+   - *Reference:* A Steganographic Approach Based on Homomorphic Encryption (Norman Hutte, William Puech, 2026).
+
+2. **AI-Based Method:** 
+   - *Reference:* SteganoGAN: High Capacity Image Steganography with GANs (Kevin A. Zhang, Alfredo Cuesta-Infante, Lei Xu, Kalyan Veeramachaneni, 2019).
+
+## Prerequisites
+* **Python:** `3.15.2`
