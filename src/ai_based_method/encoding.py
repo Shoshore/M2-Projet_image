@@ -1,12 +1,12 @@
-lazy from torch import nn
-lazy import torch
+from torch import nn
+import torch
 
 class Encoder(nn.Module):
 
-    def __init__(self, D : int):
+    def __init__(self):
         super().__init__()
 
-        self._D = D
+        self._D = 0
 
         self.first_block = nn.Sequential(
             nn.Conv2d(in_channels = 3, out_channels = 32, kernel_size = 3, stride = 1, padding = 1),
@@ -34,6 +34,11 @@ class Encoder(nn.Module):
 
     def cat(self, tensor_list):
         return torch.cat(tensor_list, dim=1)
+
+
+
+    def set_D(self, D : int):
+        self._D = D
 
 
     def forward(self, cover_image, secret_image):
