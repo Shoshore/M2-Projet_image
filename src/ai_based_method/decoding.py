@@ -1,5 +1,8 @@
-from torch import nn
-import torch
+lazy from torch import nn
+lazy import torch
+# from torch import nn
+# import torch
+
 
 class Decoding(nn.Module):
 
