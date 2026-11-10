@@ -1,10 +1,94 @@
-lazy from torch import nn
-
+lazy from torch import nn, optim
+lazy from torch.utils.data import DataLoader
+lazy import torch
 # from torch import nn
+# from torch.utils.data import DataLoader
+# import torch
+
+class Train:
+
+    def __init__(self, loss, encoder, decoder, critic):
+        self._epochs = 32
+        self._lr = 1e-4
+
+        self._device = "cpu"
+        if torch.cuda.is_available():
+            self._device = "cuda"
+
+        self._loss = loss.to(self._device)
+        self._encoder = encoder.to(self._device)
+        self._decoder = decoder.to(self._device)
+        self._critic = critic.to(self._device)
+
+        self.optimizer_C = optim.Adam(self._critic.parameters(), lr = self._lr)
+        self.optimizer_ED = optim.Adam(list(self._encoder.parameters()) + list(self._decoder.parameters()), lr = self._lr)
 
 
-class Train(nn.Module):
+    def generate_secret_message(self, batch_size: int, D: int, H: int, W: int):
+        message = torch.bernoulli(torch.full((batch_size, D, H, W), 0.5))
+        return message.to(self._device)
 
-    def __init__(self, loss):
-        self.epoch = 32
-        self._loss = loss
+
+    def fit(self, train_loader: DataLoader, D: int):
+        train_load_size = len(train_loader)
+        for epoch in range(1, self._epochs + 1):
+            self._encoder.train()
+            self._decoder.train()
+            self._critic.train()
+
+            running_loss_c = 0.0
+            running_loss_ed = 0.0
+            # -------------
+            # critic
+            # -------------
+            for _, cover_image in enumerate(train_loader):
+                cover_image = cover_image.to(self._device)
+                batch_size, _, H, W = cover_image.shape
+
+                secret_message = self.generate_secret_message(batch_size, D, H, W)
+                self.optimizer_C.zero_grad()
+
+                with torch.no_grad():
+                    stego_image = self._encoder(cover_image, secret_message)
+
+                critical_real = self._critic(cover_image)
+                critical_fake = self._critic(stego_image)
+
+                loss_c = self._loss.critic_loss(critical_real, critical_fake)
+                loss_c.backward()
+                self.optimizer_C.step()
+
+                for p in self._critic.parameters():
+                    p.data.clamp_(-0.1, 0.1)
+                # -------------
+                # auto encoder
+                # -------------
+                self.optimizer_ED.zero_grad()
+
+                stego_image = self._encoder(cover_image, secret_message)
+                decoded_message = self._decoder(stego_image)
+                critical_fake_ed = self._critic(stego_image)
+
+                total_loss, l_d, l_s, l_r = self._loss.auto_encoding_loss(
+                    decoded_message,
+                    secret_message,
+                    cover_image,
+                    stego_image,
+                    critical_fake_ed
+                )
+
+                total_loss.backward()
+
+                nn.utils.clip_grad_norm_(
+                    list(self._encoder.parameters()) + list(self._decoder.parameters()),
+                    max_norm = 0.25
+                )
+
+                self.optimizer_ED.step()
+
+                running_loss_c += loss_c.item()
+                running_loss_ed += total_loss.item()
+
+            avg_c = running_loss_c / train_load_size
+            avg_ed = running_loss_ed / train_load_size
+            print(f"Epoch ! [{epoch}/{self.epochs}] \n Critic loss: {avg_c:.4f} \n ED loss: {avg_ed:.4f}")

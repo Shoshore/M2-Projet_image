@@ -1,5 +1,4 @@
 lazy from torch import nn
-# import numpy as np
 
 class Loss(nn.Module):
 

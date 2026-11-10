@@ -15,3 +15,6 @@ The aim of the project is to implement, test, and compare two distinct approache
 
 ## Prerequisites
 * **Python:** `3.15.2`
+
+## Training
+We trained the model with Google Colab

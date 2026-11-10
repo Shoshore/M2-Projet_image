@@ -1,15 +1,11 @@
-lazy from torch import nn
-lazy import torch
-# from torch import nn
-# import torch
-
+from torch import nn
+import torch
 
 class Decoding(nn.Module):
 
-    def __init__(self):
+    def __init__(self, D: int = 4):
         super().__init__()
-
-        self._D = 0
+        self._D = D
 
         self.first_block = nn.Sequential(
             nn.Conv2d(in_channels = 3, out_channels = 32, kernel_size = 3, stride = 1, padding = 1),
@@ -38,13 +34,9 @@ class Decoding(nn.Module):
         return torch.cat(tensor_list, dim = 1)
 
 
-    def set_D(self, D : int):
-        self._D = D
-
-
     def forward(self, cipher_image):
         a = self.first_block(cipher_image)
-        b = self.second_block(a, cipher_image)
+        b = self.second_block(a)
         c = self.third_block(self.cat([a, b]))
         M = self.fourth_block(self.cat([a, b, c]))
         return M
