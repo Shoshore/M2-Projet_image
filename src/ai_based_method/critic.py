@@ -1,5 +1,4 @@
-lazy from torch import nn
-# from torch import nn
+from torch import nn
 
 
 class Critic(nn.Module):

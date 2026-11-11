@@ -1,9 +1,6 @@
-lazy from torch import nn, optim
-lazy from torch.utils.data import DataLoader
-lazy import torch
-# from torch import nn
-# from torch.utils.data import DataLoader
-# import torch
+from torch import nn, optim
+from torch.utils.data import DataLoader
+import torch
 
 class Train:
 
@@ -29,9 +26,9 @@ class Train:
         return message.to(self._device)
 
 
-    def fit(self, train_loader: DataLoader, D: int):
+    def fit(self, train_loader: DataLoader, D: int, save_callback=None, start_epoch: int = 1):
         train_load_size = len(train_loader)
-        for epoch in range(1, self._epochs + 1):
+        for epoch in range(start_epoch, self._epochs + 1):
             self._encoder.train()
             self._decoder.train()
             self._critic.train()
@@ -91,4 +88,8 @@ class Train:
 
             avg_c = running_loss_c / train_load_size
             avg_ed = running_loss_ed / train_load_size
-            print(f"Epoch ! [{epoch}/{self.epochs}] \n Critic loss: {avg_c:.4f} \n ED loss: {avg_ed:.4f}")
+            print(f"Epoch [{epoch}/{self._epochs}] \n Critic loss: {avg_c:.4f} \n ED loss: {avg_ed:.4f}")
+
+            # Callback de sauvegarde à la fin de chaque époque
+            if save_callback is not None:
+                save_callback(epoch)
