@@ -5,7 +5,7 @@ import torch
 class Train:
 
     def __init__(self, loss, encoder, decoder, critic):
-        self._epochs = 32
+        self._epochs = 16
         self._lr = 1e-4
 
         self._device = "cpu"
@@ -26,8 +26,9 @@ class Train:
         return message.to(self._device)
 
 
-    def fit(self, train_loader: DataLoader, D: int, save_callback=None, start_epoch: int = 1):
+    def fit(self, train_loader: DataLoader, D: int, save_callback = None, start_epoch: int = 1):
         train_load_size = len(train_loader)
+        print("Début de l'entrainnement")
         for epoch in range(start_epoch, self._epochs + 1):
             self._encoder.train()
             self._decoder.train()
@@ -90,6 +91,5 @@ class Train:
             avg_ed = running_loss_ed / train_load_size
             print(f"Epoch [{epoch}/{self._epochs}] \n Critic loss: {avg_c:.4f} \n ED loss: {avg_ed:.4f}")
 
-            # Callback de sauvegarde à la fin de chaque époque
             if save_callback is not None:
                 save_callback(epoch)

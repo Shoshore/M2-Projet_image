@@ -1,9 +1,9 @@
-import encoding
-import decoding
-import critic
-import loss
-import train
-import train_dataset
+from . import encoding
+from . import decoding
+from . import critic
+from . import loss
+from . import train
+from . import train_dataset
 import os
 import torch
 
@@ -24,12 +24,7 @@ class Stegano_gan:
         self.current_epoch = 1
 
     def _get_save_dir(self):
-        if os.path.exists('/content'):
-            os.makedirs('/content/weights', exist_ok=True)
-            return '/content/weights'
-        else:
-            os.makedirs('./src/ai_based_method', exist_ok=True)
-            return './src/ai_based_method'
+            return './src/ai_based_method/data/weights'
 
     def save_checkpoint(self, epoch):
         save_dir = self._get_save_dir()
@@ -54,7 +49,7 @@ class Stegano_gan:
         path = os.path.join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
 
         if os.path.exists(path):
-            checkpoint = torch.load(path, map_location=device)
+            checkpoint = torch.load(path, map_location = device)
             self._encoder.load_state_dict(checkpoint['encoder_state'])
             self._decoder.load_state_dict(checkpoint['decoder_state'])
             self._critic.load_state_dict(checkpoint['critic_state'])

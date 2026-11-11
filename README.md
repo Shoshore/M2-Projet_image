@@ -17,4 +17,5 @@ The aim of the project is to implement, test, and compare two distinct approache
 * **Python:** `3.15.2`
 
 ## Training
-We trained the model with Google Colab
+We use the data set COCO_val2017
+If you want to train the model you will have to download it and put it in **./src/ia_based/_method/data/** and create a **COCO** folder and image are stored in **COCO/val2017**
