@@ -5,11 +5,11 @@ from PIL import Image
 tools = utils.Utils()
 D = 2
 a = stegano_gan.Stegano_gan(D = D, not_train = True)
-# a.trainning(resume = False)
+# a.trainning(resume = True)
 
 cover = Image.open("./assets/images/squirrel.jpg").convert("RGB")
 hidden = Image.open("./assets/images/cat.jpg").convert("RGB")
-height, width = cover.size
+width, height = cover.size
 stego, infos = a.hide_adaptive(cover, hidden, height, width, filename = "squirrel_stego.png")
 extracted = a.extract_image(stego, infos)
 

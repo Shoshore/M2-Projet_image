@@ -21,19 +21,16 @@ class Stegano_gan:
         self._decoder = decoding.Decoding(D = self.D)
         self._critic = critic.Critic()
         self._loss = loss.Loss()
-        self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic)
+        self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic, 40)
         self._train_dataset = train_dataset.Train_dataset()
 
-        self._trained_encoder = None
-        self._trained_decoder = None
-        self._trained_critic = None
         self.current_epoch = 1
         if not_train:
             self.load_model()
 
 
     def _get_save_dir(self):
-            return './src/ai_based_method/data/weights'
+            return f'./src/ai_based_method/data/weights/D_{self.D}'
 
 
     def save_checkpoint(self, epoch):
@@ -46,7 +43,7 @@ class Stegano_gan:
             'opt_ED_state': self._train.optimizer_ED.state_dict(),
             'opt_C_state': self._train.optimizer_C.state_dict()
         }
-        path = path.join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
+        path = join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
         save(checkpoint, path)
         print(f"-> Checkpoint de l'époque {epoch} sauvegardé dans : {path}")
 
@@ -57,7 +54,7 @@ class Stegano_gan:
             device = "cuda"
 
         save_dir = self._get_save_dir()
-        path = path.join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
+        path = join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
 
         if exists(path):
             checkpoint = load(path, map_location = device)
@@ -122,16 +119,27 @@ class Stegano_gan:
 
 
     def _compress_secret(self, message_image: Image.Image, max_bytes: int):
-        img = message_image.convert("RGB")
-        side = min(img.size)
+        base = message_image.convert("RGB")
+        side = min(base.size)
+
         while side >= 8:
-            im = img.resize((side, side))
+            im = base.resize((side, side), Image.Resampling.LANCZOS)
+
+            png_buf = BytesIO()
+            im.save(png_buf, format="PNG", optimize=True)
+            if png_buf.tell() <= max_bytes:
+                return png_buf.getvalue(), side, None
+
+            rgb_im = im.convert("RGB")
             for quality in range(90, 49, -10):
-                buf = BytesIO()
-                im.save(buf, format="JPEG", quality=quality)
-                if buf.tell() <= max_bytes:
-                    return buf.getvalue(), side, quality
-            side = int(side * 0.9)
+                jpg_buf = BytesIO()
+                rgb_im.save(jpg_buf, format="JPEG", quality=quality, optimize=True)
+                if jpg_buf.tell() <= max_bytes:
+                    return jpg_buf.getvalue(), side, quality
+
+            next_side = int(side * 0.9)
+            side = next_side if next_side < side else side - 1
+
         raise ValueError("Le secret ne rentre pas, même très réduit.")
 
 
