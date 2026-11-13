@@ -118,8 +118,8 @@ class Stegano_gan:
         return img.convert("RGB") if isinstance(img, Image.Image) else Image.open(img).convert("RGB")
 
 
-    def _rs_layout(self, size: int, nsym: int):
-        n_blocks = (self.D * size * size) // 8 // 255
+    def _rs_layout(self, height : int, width : int, nsym: int):
+        n_blocks = (self.D * height * width) // 8 // 255
         if n_blocks < 1 or nsym >= 255:
             raise ValueError("Cover trop petite ou nsym trop grand.")
         return n_blocks, 255 - nsym
@@ -140,15 +140,14 @@ class Stegano_gan:
 
 
     @no_grad()
-    def hide_image(self, cover_image, message_image, size: int = 256, nsym: int = 110, filename: str = "stego.png"):
+    def hide_image(self, cover_image, message_image, height : int, width : int, nsym: int = 110, filename: str = "stego.png"):
         device = self._train._device
 
-        cover = self._to_pil(cover_image).resize((size, size))
+        cover = self._to_pil(cover_image).resize((width, height))
         cover_t = from_numpy(array(cover)).permute(2, 0, 1).float() / 255.0
         cover_t = (cover_t * 2 - 1).unsqueeze(0).to(device)
-        H, W = size, size
 
-        n_blocks, k = self._rs_layout(size, nsym)
+        n_blocks, k = self._rs_layout(height, width, nsym)
         payload, side, quality = self._compress_secret(message_image, n_blocks * k)
         n_bytes = len(payload)
         padded = payload + urandom(n_blocks * k - n_bytes)
@@ -162,11 +161,11 @@ class Stegano_gan:
         stream = blocks.T.flatten()
         bits = unpackbits(stream)
 
-        capacity = self.D * H * W
+        capacity = self.D * height * width
         padding = random.randint(0, 2, capacity - len(bits), dtype=uint8)
         bits = concatenate([bits, padding])
 
-        message = from_numpy(bits).float().reshape(1, self.D, H, W).to(device)
+        message = from_numpy(bits).float().reshape(1, self.D, height, width).to(device)
 
         stego_t = self._encoder(cover_t, message).float().clamp(-1, 1)
         stego_t = (stego_t + 1) / 2
@@ -175,7 +174,7 @@ class Stegano_gan:
 
         stego_img.save(join("./assets/result/ai_based_method", filename))
 
-        infos = {"size": size, "nsym": nsym, "n_bytes": n_bytes, "side": side, "quality": quality}
+        infos = {"height": height, "width": width, "nsym": nsym, "n_bytes": n_bytes, "side": side, "quality": quality}
         print(f"Secret : JPEG {side}x{side} q={quality}, {n_bytes} octets sur {n_blocks * k} possibles " f"({n_blocks} blocs RS, {nsym} octets de correction par bloc).")
         return stego_img, infos
 
@@ -183,8 +182,8 @@ class Stegano_gan:
     @no_grad()
     def extract_image(self, stego_image, infos):
         device = self._train._device
-        size, nsym, n_bytes = infos["size"], infos["nsym"], infos["n_bytes"]
-        n_blocks, k = self._rs_layout(size, nsym)
+        height, width, nsym, n_bytes = infos["height"], infos["width"], infos["nsym"], infos["n_bytes"]
+        n_blocks, k = self._rs_layout(height=height, width=width, nsym=nsym)
 
         stego = self._to_pil(stego_image)
         stego_t = from_numpy(array(stego)).permute(2, 0, 1).float() / 255.0
@@ -209,13 +208,13 @@ class Stegano_gan:
         return Image.open(BytesIO(bytes(data[:n_bytes]))).convert("RGB")
 
 
-    def hide_adaptive(self, cover_image, message_image, size: int = 256, nsyms=(64, 110, 140, 180), tries: int = 2, filename: str = "stego.png"):
+    def hide_adaptive(self, cover_image, message_image, height : int = 256, width: int = 256, nsyms=(64, 110, 140, 180), tries: int = 2, filename: str = "stego.png"):
         for nsym in nsyms:
-            n_blocks, k = self._rs_layout(size, nsym)
+            n_blocks, k = self._rs_layout(height=height, width=width, nsym=nsym)
             payload, _, _ = self._compress_secret(message_image, n_blocks * k)
             ref = array(Image.open(BytesIO(payload)).convert("RGB"))
             for _ in range(tries):
-                stego, infos = self.hide_image(cover_image, message_image, size, nsym=nsym, filename=filename)
+                stego, infos = self.hide_image(cover_image, message_image, height=height, width=width, nsym=nsym, filename=filename)
                 saved = Image.open(join("./assets/result/ai_based_method", filename))
                 try:
                     rec = array(self.extract_image(saved, infos))
