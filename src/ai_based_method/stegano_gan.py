@@ -4,12 +4,18 @@ from . import critic
 from . import loss
 from . import train
 from . import train_dataset
-import os
-import torch
+from os.path import join, exists
+from os import urandom
+from torch import save, load, no_grad, from_numpy
+from torch.cuda import is_available
+from numpy import array, uint8, unpackbits, random, concatenate, zeros, packbits, frombuffer, unpackbits
+from PIL import Image
+from reedsolo import RSCodec, ReedSolomonError
+from io import BytesIO
 
 class Stegano_gan:
 
-    def __init__(self, D: int = 4):
+    def __init__(self, D: int = 2):
         self.D = D
         self._encoder = encoding.Encoder(D = self.D)
         self._decoder = decoding.Decoding(D = self.D)
@@ -23,8 +29,10 @@ class Stegano_gan:
         self._trained_critic = None
         self.current_epoch = 1
 
+
     def _get_save_dir(self):
             return './src/ai_based_method/data/weights'
+
 
     def save_checkpoint(self, epoch):
         save_dir = self._get_save_dir()
@@ -36,20 +44,21 @@ class Stegano_gan:
             'opt_ED_state': self._train.optimizer_ED.state_dict(),
             'opt_C_state': self._train.optimizer_C.state_dict()
         }
-        path = os.path.join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
-        torch.save(checkpoint, path)
+        path = path.join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
+        save(checkpoint, path)
         print(f"-> Checkpoint de l'époque {epoch} sauvegardé dans : {path}")
+
 
     def load_checkpoint(self):
         device = "cpu"
-        if torch.cuda.is_available():
+        if is_available():
             device = "cuda"
 
         save_dir = self._get_save_dir()
-        path = os.path.join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
+        path = path.join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
 
-        if os.path.exists(path):
-            checkpoint = torch.load(path, map_location = device)
+        if exists(path):
+            checkpoint = load(path, map_location = device)
             self._encoder.load_state_dict(checkpoint['encoder_state'])
             self._decoder.load_state_dict(checkpoint['decoder_state'])
             self._critic.load_state_dict(checkpoint['critic_state'])
@@ -61,6 +70,7 @@ class Stegano_gan:
         else:
             print("Aucun checkpoint trouvé. L'entraînement commencera à l'époque 1.")
             return False
+
 
     def trainning(self, resume=False):
         if resume:
@@ -74,12 +84,143 @@ class Stegano_gan:
         )
 
         save_dir = self._get_save_dir()
-        path_e = os.path.join(save_dir, f"encoder_steganogan_{self.D}.pth")
-        path_d = os.path.join(save_dir, f"decoder_steganogan_{self.D}.pth")
-        path_c = os.path.join(save_dir, f"critic_steganogan_{self.D}.pth")
+        path_e = join(save_dir, f"encoder_steganogan_{self.D}.pth")
+        path_d = join(save_dir, f"decoder_steganogan_{self.D}.pth")
+        path_c = join(save_dir, f"critic_steganogan_{self.D}.pth")
 
-        torch.save(self._encoder.state_dict(), path_e)
-        torch.save(self._decoder.state_dict(), path_d)
-        torch.save(self._critic.state_dict(), path_c)
+        save(self._encoder.state_dict(), path_e)
+        save(self._decoder.state_dict(), path_d)
+        save(self._critic.state_dict(), path_c)
 
         print(f"Entraînement finalisé ! Modèles finaux sauvegardés dans : {save_dir}")
+
+
+    def load_model(self):
+        device = self._train._device
+        save_dir = self._get_save_dir()
+
+        for name, model in [("encoder", self._encoder), ("decoder", self._decoder), ("critic", self._critic)]:
+            path = join(save_dir, f"{name}_steganogan_{self.D}.pth")
+            if not exists(path):
+                if name == "critic":
+                    continue
+                raise FileNotFoundError(f"Poids introuvables : {path}")
+            model.load_state_dict(load(path, map_location=device))
+            model.to(device)
+
+        self._encoder.eval()
+        self._decoder.eval()
+        self._critic.eval()
+        print(f"Modèle D={self.D} chargé depuis {save_dir}")
+
+
+    def _to_pil(self, img):
+        return img.convert("RGB") if isinstance(img, Image.Image) else Image.open(img).convert("RGB")
+
+
+    def _rs_layout(self, size: int, nsym: int):
+        n_blocks = (self.D * size * size) // 8 // 255
+        if n_blocks < 1 or nsym >= 255:
+            raise ValueError("Cover trop petite ou nsym trop grand.")
+        return n_blocks, 255 - nsym
+
+
+    def _compress_secret(self, message_image, max_bytes: int):
+        img = self._to_pil(message_image)
+        side = min(img.size)
+        while side >= 8:
+            im = img.resize((side, side))
+            for quality in range(90, 49, -10):
+                buf = BytesIO()
+                im.save(buf, format="JPEG", quality=quality)
+                if buf.tell() <= max_bytes:
+                    return buf.getvalue(), side, quality
+            side = int(side * 0.9)
+        raise ValueError("Le secret ne rentre pas, même très réduit.")
+
+
+    @no_grad()
+    def hide_image(self, cover_image, message_image, size: int = 256, nsym: int = 110, filename: str = "stego.png"):
+        device = self._train._device
+
+        cover = self._to_pil(cover_image).resize((size, size))
+        cover_t = from_numpy(array(cover)).permute(2, 0, 1).float() / 255.0
+        cover_t = (cover_t * 2 - 1).unsqueeze(0).to(device)
+        H, W = size, size
+
+        n_blocks, k = self._rs_layout(size, nsym)
+        payload, side, quality = self._compress_secret(message_image, n_blocks * k)
+        n_bytes = len(payload)
+        padded = payload + urandom(n_blocks * k - n_bytes)
+
+        rs = RSCodec(nsym)
+        encoded = bytearray()
+        for i in range(n_blocks):
+            encoded += rs.encode(padded[i * k:(i + 1) * k])
+        blocks = frombuffer(bytes(encoded), dtype=uint8).reshape(n_blocks, 255)
+
+        stream = blocks.T.flatten()
+        bits = unpackbits(stream)
+
+        capacity = self.D * H * W
+        padding = random.randint(0, 2, capacity - len(bits), dtype=uint8)
+        bits = concatenate([bits, padding])
+
+        message = from_numpy(bits).float().reshape(1, self.D, H, W).to(device)
+
+        stego_t = self._encoder(cover_t, message).float().clamp(-1, 1)
+        stego_t = (stego_t + 1) / 2
+        stego_np = (stego_t[0].permute(1, 2, 0).cpu().numpy() * 255).round().astype(uint8)
+        stego_img = Image.fromarray(stego_np)
+
+        stego_img.save(join("./assets/result/ai_based_method", filename))
+
+        infos = {"size": size, "nsym": nsym, "n_bytes": n_bytes, "side": side, "quality": quality}
+        print(f"Secret : JPEG {side}x{side} q={quality}, {n_bytes} octets sur {n_blocks * k} possibles " f"({n_blocks} blocs RS, {nsym} octets de correction par bloc).")
+        return stego_img, infos
+
+
+    @no_grad()
+    def extract_image(self, stego_image, infos):
+        device = self._train._device
+        size, nsym, n_bytes = infos["size"], infos["nsym"], infos["n_bytes"]
+        n_blocks, k = self._rs_layout(size, nsym)
+
+        stego = self._to_pil(stego_image)
+        stego_t = from_numpy(array(stego)).permute(2, 0, 1).float() / 255.0
+        stego_t = (stego_t * 2 - 1).unsqueeze(0).to(device)
+
+        logits = self._decoder(stego_t)
+        bits = (logits > 0).flatten().cpu().numpy().astype(uint8)
+
+        stream = packbits(bits[:n_blocks * 255 * 8])
+        blocks = stream.reshape(255, n_blocks).T
+
+        rs = RSCodec(nsym)
+        data, failed = bytearray(), 0
+        for block in blocks:
+            try:
+                data += rs.decode(bytes(block))[0]
+            except ReedSolomonError:
+                failed += 1
+                data += bytes(block[:k])
+        print(f"Blocs RS non corrigeables : {failed}/{n_blocks}")
+
+        return Image.open(BytesIO(bytes(data[:n_bytes]))).convert("RGB")
+
+
+    def hide_adaptive(self, cover_image, message_image, size: int = 256, nsyms=(64, 110, 140, 180), tries: int = 2, filename: str = "stego.png"):
+        for nsym in nsyms:
+            n_blocks, k = self._rs_layout(size, nsym)
+            payload, _, _ = self._compress_secret(message_image, n_blocks * k)
+            ref = array(Image.open(BytesIO(payload)).convert("RGB"))
+            for _ in range(tries):
+                stego, infos = self.hide_image(cover_image, message_image, size, nsym=nsym, filename=filename)
+                saved = Image.open(join("./assets/result/ai_based_method", filename))
+                try:
+                    rec = array(self.extract_image(saved, infos))
+                    if rec.shape == ref.shape and (rec == ref).all():
+                        return stego, infos
+                except Exception:
+                    pass
+        raise RuntimeError("Aucun nsym ne permet une récupération exacte pour cette cover.")
