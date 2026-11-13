@@ -15,7 +15,7 @@ from io import BytesIO
 
 class Stegano_gan:
 
-    def __init__(self, D: int = 2):
+    def __init__(self, D: int = 2, not_train = True):
         self.D = D
         self._encoder = encoding.Encoder(D = self.D)
         self._decoder = decoding.Decoding(D = self.D)
@@ -28,6 +28,8 @@ class Stegano_gan:
         self._trained_decoder = None
         self._trained_critic = None
         self.current_epoch = 1
+        if not_train:
+            self.load_model()
 
 
     def _get_save_dir(self):
@@ -219,3 +221,13 @@ class Stegano_gan:
                 except Exception:
                     pass
         raise RuntimeError("Aucun nsym ne permet une récupération exacte pour cette cover.")
+
+
+    def set_d(self, D : int):
+        if D == self.D:
+            return
+        self.D = D
+        self._encoder = encoding.Encoder(D = self.D)
+        self._decoder = decoding.Decoding(D = self.D)
+        self._critic = critic.Critic()
+        self.load_model()
