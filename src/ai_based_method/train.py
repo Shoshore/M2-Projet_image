@@ -5,8 +5,8 @@ from torch.optim import Adam
 
 class Train:
 
-    def __init__(self, loss, encoder, decoder, critic):
-        self._epochs = 32
+    def __init__(self, loss, encoder, decoder, critic, epochs = 32):
+        self._epochs = epochs
         self._lr = 1e-4
 
         self._device = "cpu"
