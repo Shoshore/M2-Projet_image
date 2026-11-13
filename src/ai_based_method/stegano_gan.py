@@ -171,7 +171,6 @@ class Stegano_gan:
         stego_img.save(join("./assets/result/ai_based_method", filename))
 
         infos = {"height": height, "width": width, "nsym": nsym, "n_bytes": n_bytes, "side": side, "quality": quality}
-        print(f"Secret : JPEG {side}x{side} q={quality}, {n_bytes} octets sur {n_blocks * k} possibles " f"({n_blocks} blocs RS, {nsym} octets de correction par bloc).")
         return stego_img, infos
 
 
@@ -199,7 +198,6 @@ class Stegano_gan:
             except ReedSolomonError:
                 failed += 1
                 data += bytes(block[:k])
-        print(f"Blocs RS non corrigeables : {failed}/{n_blocks}")
 
         return Image.open(BytesIO(bytes(data[:n_bytes]))).convert("RGB")
 
