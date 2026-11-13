@@ -8,7 +8,6 @@ class Train:
     def __init__(self, loss, encoder, decoder, critic):
         self._epochs = 32
         self._lr = 1e-4
-        self._use_amp = False
 
         self._device = "cpu"
         if cuda.is_available():

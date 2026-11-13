@@ -104,8 +104,6 @@ class Stegano_gan:
         for name, model in [("encoder", self._encoder), ("decoder", self._decoder), ("critic", self._critic)]:
             path = join(save_dir, f"{name}_steganogan_{self.D}.pth")
             if not exists(path):
-                if name == "critic":
-                    continue
                 raise FileNotFoundError(f"Poids introuvables : {path}")
             model.load_state_dict(load(path, map_location=device))
             model.to(device)
