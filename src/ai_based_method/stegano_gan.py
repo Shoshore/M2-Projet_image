@@ -114,19 +114,15 @@ class Stegano_gan:
         print(f"Modèle D={self.D} chargé depuis {save_dir}")
 
 
-    def _to_pil(self, img):
-        return img.convert("RGB") if isinstance(img, Image.Image) else Image.open(img).convert("RGB")
-
-
-    def _rs_layout(self, height : int, width : int, nsym: int):
+    def _rs_layout(self, height: int, width: int, nsym: int):
         n_blocks = (self.D * height * width) // 8 // 255
         if n_blocks < 1 or nsym >= 255:
             raise ValueError("Cover trop petite ou nsym trop grand.")
         return n_blocks, 255 - nsym
 
 
-    def _compress_secret(self, message_image, max_bytes: int):
-        img = self._to_pil(message_image)
+    def _compress_secret(self, message_image: Image.Image, max_bytes: int):
+        img = message_image.convert("RGB")
         side = min(img.size)
         while side >= 8:
             im = img.resize((side, side))
@@ -143,7 +139,7 @@ class Stegano_gan:
     def hide_image(self, cover_image, message_image, height : int, width : int, nsym: int = 110, filename: str = "stego.png"):
         device = self._train._device
 
-        cover = self._to_pil(cover_image).resize((width, height))
+        cover = cover_image.convert("RGB").resize((width, height))
         cover_t = from_numpy(array(cover)).permute(2, 0, 1).float() / 255.0
         cover_t = (cover_t * 2 - 1).unsqueeze(0).to(device)
 
@@ -185,7 +181,7 @@ class Stegano_gan:
         height, width, nsym, n_bytes = infos["height"], infos["width"], infos["nsym"], infos["n_bytes"]
         n_blocks, k = self._rs_layout(height=height, width=width, nsym=nsym)
 
-        stego = self._to_pil(stego_image)
+        stego = stego_image.convert("RGB") 
         stego_t = from_numpy(array(stego)).permute(2, 0, 1).float() / 255.0
         stego_t = (stego_t * 2 - 1).unsqueeze(0).to(device)
 
