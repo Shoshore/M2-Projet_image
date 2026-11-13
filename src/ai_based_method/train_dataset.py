@@ -5,13 +5,11 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision.transforms import Normalize, Compose, RandomCrop, RandomHorizontalFlip, ToTensor
 
 
-class _ImagesOnly(Dataset):
+class _Images_only(Dataset):
 
     def __init__(self, root):
         self.root = root
-        self.files = sorted(
-            f for f in listdir(root) if f.lower().endswith((".jpg", ".jpeg", ".png"))
-        )
+        self.files = sorted(f for f in listdir(root) if f.lower().endswith((".jpg", ".jpeg", ".png")))
         self.transform = None
 
     def __len__(self):
@@ -27,7 +25,7 @@ class _ImagesOnly(Dataset):
 class Train_dataset():
 
     def __init__(self, root = "./src/ai_based_method/data/COCO/val2017"):
-        self._dataset = _ImagesOnly(root)
+        self._dataset = _Images_only(root)
         self.batch_size = 16
         self.img_size = 256
 

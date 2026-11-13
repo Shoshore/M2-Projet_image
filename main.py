@@ -13,5 +13,7 @@ height, width = cover.size
 stego, infos = a.hide_adaptive(cover, hidden, height, width, filename = "squirrel_stego.png")
 extracted = a.extract_image(stego, infos)
 
-print(tools.psnr(cover, stego))
-print(tools.psnr(hidden, extracted))
+print("PSNR cover : ", tools.psnr(cover, stego))
+print("PSNR hidden : ", tools.psnr(hidden, extracted))
+print("SSIM cover : ", tools.ssim(cover, stego))
+print("SSIM hidden : ", tools.ssim(hidden, extracted))
