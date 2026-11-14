@@ -55,7 +55,7 @@ class Utils:
             raise ValueError(f"Tailles différentes : {a.shape} vs {b.shape}. " "Redimensionne l'image cachée à la taille de l'extraite avant de comparer.")
         bits_a = unpackbits(a)
         bits_b = unpackbits(b)
-        return float(mean(bits_a == bits_b) * 100)
+        return float(mean(bits_a == bits_b))
 
 
     def rs_bpp(self, hidden_image, extracted_image, D: float = 2.0):
@@ -63,6 +63,6 @@ class Utils:
         b = self._to_array(extracted_image).astype(uint8)
         if a.shape != b.shape:
             raise ValueError(f"Tailles différentes : {a.shape} vs {b.shape}. " "Redimensionne l'image cachée à la taille de l'extraite avant de comparer.")
-        acc_pct = self.bit_accuracy(hidden_image, extracted_image)
+        acc_pct = self.bit_accuracy(hidden_image, extracted_image) * 100.0
         p = 1.0 - (acc_pct / 100.0)
         return float(max(0.0, (1.0 - 2.0 * p) * D))
