@@ -130,13 +130,6 @@ class Stegano_gan:
             if png_buf.tell() <= max_bytes:
                 return png_buf.getvalue(), side, None
 
-            rgb_im = im.convert("RGB")
-            for quality in range(90, 49, -10):
-                jpg_buf = BytesIO()
-                rgb_im.save(jpg_buf, format="JPEG", quality=quality, optimize=True)
-                if jpg_buf.tell() <= max_bytes:
-                    return jpg_buf.getvalue(), side, quality
-
             next_side = int(side * 0.9)
             side = next_side if next_side < side else side - 1
 
