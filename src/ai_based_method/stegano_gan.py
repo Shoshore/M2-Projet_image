@@ -15,13 +15,13 @@ from io import BytesIO
 
 class Stegano_gan:
 
-    def __init__(self, D: int = 2, not_train = True):
+    def __init__(self, D: int = 2, not_train = True, max_epoch = 32):
         self.D = D
         self._encoder = encoding.Encoder(D = self.D)
         self._decoder = decoding.Decoding(D = self.D)
         self._critic = critic.Critic()
         self._loss = loss.Loss()
-        self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic, 56)
+        self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic, max_epoch)
         self.current_epoch = 1
         if not_train:
             self.load_model()
