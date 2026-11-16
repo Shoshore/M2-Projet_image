@@ -43,16 +43,3 @@ print("Bit accuracy hidden/extrated : ", mean_bit_acc)
 print("RS-BPP hidden/extrated : ", mean_rs_bpp)
 print("PSNR cover/stego : ", mean_psnr)
 print("SSIM cover/stego : ", mean_ssim)
-
-
-
-# cover = Image.open("./assets/images/squirrel.jpg").convert("RGB")
-
-# width, height = cover.size
-# stego, infos = a.hide_adaptive(cover, hidden, height, width)
-# extracted = a.extract_image(stego, infos)
-
-# print("PSNR cover/stego : ", tools.psnr(cover, stego))
-# print("SSIM cover/stego : ", tools.ssim(cover, stego))
-# print("Bit accuracy hidden/extrated : ", tools.bit_accuracy(hidden, extracted))
-# print("RS-BPP hidden/extrated : ", tools.rs_bpp(hidden, extracted, D))

@@ -21,7 +21,7 @@ class Stegano_gan:
         self._decoder = decoding.Decoding(D = self.D)
         self._critic = critic.Critic()
         self._loss = loss.Loss()
-        self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic, 40)
+        self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic, 56)
         self.current_epoch = 1
         if not_train:
             self.load_model()
@@ -51,6 +51,7 @@ class Stegano_gan:
     def load_checkpoint(self):
         device = "cpu"
         if is_available():
+            print("GPU")
             device = "cuda"
 
         save_dir = self._get_save_dir()
