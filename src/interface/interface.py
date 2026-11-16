@@ -137,6 +137,7 @@ class mainWindow:
         self.canvas1 = openCanvas(self, "get hidden image", 0.25, 0.25)
         self.canvas2 = openCanvas(self, "get visible image", 0.25, 0.75)
         self.canvas3 = optionCanvas(self, 0.75, 0.25)
+        self.canvas4 = resultCanvas(self, "save image", 0.75, 0.75)
 
         self.window.bind("<Configure>", self.resizing)
         self.window.mainloop()
@@ -156,6 +157,7 @@ class mainWindow:
                 self.canvas1.resizing()
                 self.canvas2.resizing()
                 self.canvas3.resizing()
+                self.canvas4.resizing()
 
 
 
