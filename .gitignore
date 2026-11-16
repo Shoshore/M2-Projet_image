@@ -7,3 +7,4 @@ share
 /.venv
 __pycache__/
 COCO/
+result/

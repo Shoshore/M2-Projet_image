@@ -4,6 +4,7 @@ from PIL import Image, ImageTk
 
 
 
+
 def resizeImage(img, newWidth, newHeight):
     oldWidth = img.width()
     oldHeight = img.height()
@@ -90,7 +91,6 @@ class resultCanvas(customCanvas):
     def __init__(self, main_window, button_name, pos_x, pos_y):
         super().__init__(main_window, pos_x, pos_y)
         self.img = None
-        self.filepath = None
 
         self.txt = self.canvas.create_text(0, 60, text="")
         self.button=Button(self.canvas, text=button_name, command=self.openimage, anchor=W)
@@ -102,7 +102,7 @@ class resultCanvas(customCanvas):
         self.img = ImageTk.PhotoImage(self.resized_image)
         self.canvas.create_image(self.main.canvas_width/4, self.main.button_height+self.main.canvas_height/4, anchor=CENTER, image=self.img)
         self.canvas.delete(str(self.txt))
-        self.txt = self.canvas.create_text(self.canvas_width/2-10, self.main.button_height, text=self.filepath, anchor=E)
+        self.txt = self.canvas.create_text(self.canvas_width/2-10, self.main.button_height, text="created file", anchor=E)
 
     def resizing(self):
         super().resizing()
@@ -110,19 +110,16 @@ class resultCanvas(customCanvas):
             self.create_image()
 
     def openimage(self):
-        self.filepath = askopenfilename(title="Ouvrir une image",filetypes=[('png files','.png'),('all files','.*')])
-        self.raw_image = Image.open(self.filepath)
+        w, h = self.main.canvas1.raw_image.size
+        self.raw_image, infos = self.main.algo(self.main.canvas1.raw_image, self.main.canvas2.raw_image, h, w, filename="gloubi.png")
         self.create_image()
 
 
 class mainWindow:
-    def __init__(self):
-        self.img1 = None
-        self.img2 = None
+    def __init__(self, algo):
         self.button_height = 20
-        self.filepath1 = None
-        self.filepath2 = None
 
+        self.algo = algo
 
         self.window = Tk()
         self.window.title('Projet Image')
@@ -158,7 +155,6 @@ class mainWindow:
                 self.canvas2.resizing()
                 self.canvas3.resizing()
                 self.canvas4.resizing()
-
-
-
-window = mainWindow()
+    
+    def start(self):
+        self.window.mainloop()
