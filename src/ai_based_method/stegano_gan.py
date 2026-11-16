@@ -22,11 +22,11 @@ class Stegano_gan:
         self._critic = critic.Critic()
         self._loss = loss.Loss()
         self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic, 40)
-        self._train_dataset = train_dataset.Train_dataset()
-
         self.current_epoch = 1
         if not_train:
             self.load_model()
+        else:    
+            self._train_dataset = train_dataset.Train_dataset()   
 
 
     def _get_save_dir(self):
