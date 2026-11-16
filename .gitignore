@@ -1,0 +1,10 @@
+lib
+lib64
+bin
+pyvenv.cfg
+share
+/.vscode
+/.venv
+__pycache__/
+COCO/
+result/
