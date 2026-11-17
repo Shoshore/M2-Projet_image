@@ -13,16 +13,32 @@ class AES_ECB:
 
     def encrypt_array(self, raw_bytes: bytes) -> np.ndarray:
         cipher = AES.new(self.key, AES.MODE_ECB)
-        padded_bytes = pad(raw_bytes, AES.block_size)
-        encrypted_bytes = cipher.encrypt(padded_bytes)
+        size_of_full_blocks = len(raw_bytes) // AES.block_size * AES.block_size
+        if size_of_full_blocks == 0:
+            raise ValueError("the secret image must contain at least 16 bytes")
+
+        encrypted_bytes = cipher.encrypt(raw_bytes[:size_of_full_blocks])
+
+        tail = raw_bytes[size_of_full_blocks:]
+        if tail:
+            mask = cipher.encrypt(encrypted_bytes[-AES.block_size:])[:len(tail)]
+            encrypted_bytes += bytes(a ^ b for a, b in zip(tail, mask))
 
         return np.frombuffer(encrypted_bytes, dtype=np.uint8)
 
     def decrypt_array(self, encrypted_bytes: np.ndarray) -> bytes:
         cipher = AES.new(self.key, AES.MODE_ECB)
-        decrypted_bytes = cipher.decrypt(encrypted_bytes.tobytes())
+        encrypted_bytes = encrypted_bytes.tobytes()
+        size_of_full_blocks = len(encrypted_bytes) // AES.block_size * AES.block_size
 
-        return unpad(decrypted_bytes, AES.block_size)
+        raw_bytes = cipher.decrypt(encrypted_bytes[:size_of_full_blocks])
+
+        tail = encrypted_bytes[size_of_full_blocks:]
+        if tail:
+            mask = cipher.encrypt(encrypted_bytes[size_of_full_blocks - AES.block_size:size_of_full_blocks])[:len(tail)]
+            raw_bytes += bytes(a ^ b for a, b in zip(tail, mask))
+
+        return raw_bytes
 
 class PaillierCryptosystem:
     def __init__(self, p: int, q: int):
@@ -116,14 +132,7 @@ def join_blocks(blocks: np.ndarray, alpha_prime: int, n_bytes: int) -> np.ndarra
     bits = ((blocks[:, None] >> shifts[None, :]) & 1).astype(np.uint8).ravel()
     return np.packbits(bits[:8 * n_bytes])
 
-def encrypted_length(n_raw_bytes: int) -> int:
-    return (n_raw_bytes // AES.block_size + 1) * AES.block_size
-
-def required_host_size(secret_shape: tuple, paillier: PaillierCryptosystem) -> int:
-    n_blocks = -(-8 * encrypted_length(int(np.prod(secret_shape))) // paillier.alpha_prime)
-    return n_blocks * paillier.pixels_per_encrypted_block
-
-def encrypt_transform(secret_image: np.ndarray, host_image: np.ndarray, aes: AES_ECB, paillier: PaillierCryptosystem, order: str = "pixel", max_iterations: int = 500) -> np.ndarray:
+def encrypt_transform(secret_image: np.ndarray, host_image: np.ndarray, aes: AES_ECB, paillier: PaillierCryptosystem, max_iterations: int = 500) -> np.ndarray:
     encrypted = aes.encrypt_array(np.ascontiguousarray(secret_image).ravel().tobytes())
 
     m_blocks = split_into_blocks(encrypted, paillier.alpha_prime)
@@ -131,8 +140,7 @@ def encrypt_transform(secret_image: np.ndarray, host_image: np.ndarray, aes: AES
     host_stream = np.ascontiguousarray(host_image).ravel().astype(np.uint8)
     n_pixels_used = len(m_blocks) * paillier.pixels_per_encrypted_block
     if n_pixels_used > len(host_stream):
-        raise ValueError("host image too small: %d values needed (secret + AES padding), "
-                         "%d available" % (n_pixels_used, len(host_stream)))
+        raise ValueError("host image too small: %d values needed, %d available" % (n_pixels_used, len(host_stream)))
     t_blocks = host_stream[:n_pixels_used].reshape(-1, paillier.pixels_per_encrypted_block)
 
     candidates = paillier.r_candidates(max_iterations)
@@ -142,8 +150,8 @@ def encrypt_transform(secret_image: np.ndarray, host_image: np.ndarray, aes: AES
     transformed_pixels[:n_pixels_used] = np.frombuffer(b"".join(int(e_i).to_bytes(paillier.pixels_per_encrypted_block, "big") for e_i in e_blocks), dtype=np.uint8)
     return transformed_pixels.reshape(host_image.shape)
 
-def decrypt_transform(transformed_image: np.ndarray, secret_shape: tuple, aes: AES_ECB, paillier: PaillierCryptosystem, order: str = "pixel") -> np.ndarray:
-    n_encrypted = encrypted_length(int(np.prod(secret_shape)))
+def decrypt_transform(transformed_image: np.ndarray, secret_shape: tuple, aes: AES_ECB, paillier: PaillierCryptosystem) -> np.ndarray:
+    n_encrypted = int(np.prod(secret_shape))
     n_blocks = -(-8 * n_encrypted // paillier.alpha_prime)
     stream = np.ascontiguousarray(transformed_image).ravel().astype(np.uint8).tobytes()
 
@@ -171,9 +179,8 @@ if __name__ == "__main__":
 
     secret, secret_shape = load_grayscale_image(sys.argv[1])
     host, _ = load_grayscale_image(sys.argv[2])
-    needed = required_host_size(secret_shape, paillier)
 
-    print("host values needed: %d (2 x secret = %d), available: %d" % (needed, 2 * int(np.prod(secret_shape)), host.size))
+    print("host values needed (2 x secret): %d, available: %d" % (2 * int(np.prod(secret_shape)), host.size))
 
     transformed = encrypt_transform(secret, host, aes, paillier)
     recovered = decrypt_transform(transformed, secret_shape, aes, paillier)
