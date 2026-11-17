@@ -5,7 +5,7 @@ from os import listdir
 from os.path import splitext, join
 tools = utils.Utils()
 D = 2
-FILE = "./assets/images/cover"
+FILE = "./assets/images/"
 
 a = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 75)
 # a.trainning(resume = True)
