@@ -208,13 +208,11 @@ class Stegano_gan:
             n_blocks, k = self._rs_layout(height=height, width=width, nsym=nsym)
             payload, _, _ = self._compress_secret(message_image, n_blocks * k)
             if payload == None:
-                print("trop petit")
                 return None, None
             ref = array(Image.open(BytesIO(payload)).convert("RGB"))
             for _ in range(tries):
                 stego, infos = self.hide_image(cover_image, message_image, height=height, width=width, nsym=nsym, filename=filename)
                 if stego == None:
-                    print("end")
                     continue
                 saved = Image.open(join("./assets/result/ai_based_method", filename))
                 try:
