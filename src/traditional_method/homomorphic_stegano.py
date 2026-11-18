@@ -100,18 +100,12 @@ def encryption_transformation_of_plaintext_block(m_i: int, t_i: int, paillier: P
         raise RuntimeError("no value of r gives an encrypted block of at most beta' bits")
     return best_e_i
 
-def load_grayscale_image(path: str):
-    image = Image.open(path).convert('L')
+def load_image(path: str, color: bool):
+    image = Image.open(path).convert('RGB' if color else 'L')
     np_image = np.array(image, dtype=np.uint8)
     shape = np_image.shape
 
     return np_image, shape
-
-def load_color_image(path: str) -> np.ndarray:
-    image = Image.open(path).convert('RGB')
-    np_image = np.asarray(image, dtype=np.uint8)
-
-    return np_image
 
 def save_image(image_array: np.ndarray, shape: tuple, path: str):
     reshaped_array = np.asarray(image_array, dtype=np.uint8).reshape(shape)
@@ -177,8 +171,8 @@ if __name__ == "__main__":
     aes = AES_ECB(get_random_bytes(32))
     paillier = PaillierCryptosystem(13, 23)
 
-    secret, secret_shape = load_grayscale_image(sys.argv[1])
-    host, _ = load_grayscale_image(sys.argv[2])
+    secret, secret_shape = load_image(sys.argv[1], sys.argv[3] == '-c')
+    host, _ = load_image(sys.argv[2], sys.argv[3] == '-c')
 
     print("host values needed (2 x secret): %d, available: %d" % (2 * int(np.prod(secret_shape)), host.size))
 
