@@ -6,53 +6,64 @@ from os.path import splitext, join
 tools = utils.Utils()
 D = 2
 FILE = "./assets/images/"
-a = stegano_gan.Stegano_gan(D = D, not_train = True)
+
+a = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 32)
 # a.trainning(resume = True)
 
-mean_psnr = 0
-mean_ssim = 0
-mean_bit_acc = 0
-mean_rs_bpp = 0
 nb_img = 0
-hidden = Image.open("./assets/images/cat.jpg").convert("RGB")
-wh, hh = hidden.size
-for name in sorted(listdir(FILE)):
-    path = join(name)
-    out_name, _ = splitext(name)
-    if path == "cat.jpg":
-        continue
-    nb_img += 1
-    cover = Image.open(FILE + path).convert("RGB")
-    w, h = cover.size
-    out_name += '_stego.png'
-    stego, infos = a.hide_adaptive(cover, hidden, h, w, filename=out_name)
-    extracted = a.extract_image(stego, infos)
-    we, he = extracted.size  
-    hidden_comp = hidden.resize((we, he))
-    mean_psnr += tools.psnr(cover, stego)
-    mean_ssim += tools.ssim(cover, stego)
-    mean_bit_acc += tools.bit_accuracy(hidden_comp, extracted)
-    mean_rs_bpp += tools.rs_bpp(hidden_comp, extracted, D)
+stats_stegano = {
+    "mean_psnr_stego" : 0,
+    "mean_ssim_stego" : 0,
+    "mean_psnr_extract" : 0,
+    "mean_ssim_extract" : 0,
+    "mean_bit_acc_extract" : 0,
+    "mean_rs_bpp_extract" : 0,
+    "size_min_ratio" : 100,
+    "size_min_refuse_ratio" : 0,
+}
 
-mean_psnr /= nb_img
-mean_ssim /= nb_img
-mean_bit_acc /= nb_img
-mean_rs_bpp /= nb_img
+
+for hid_name in sorted(listdir(FILE)):
+    path_2 = join(hid_name)
+    hidden = Image.open(FILE + path_2).convert("RGB")
+    wh, hh = hidden.size
+    k = wh * hh
+
+    for name in sorted(listdir(FILE)):
+        path = join(name)
+        out_name, _ = splitext(name)
+        if path == path_2:
+            continue
+        
+        cover = Image.open(FILE + path).convert("RGB")
+        w, h = cover.size
+        out_name += '_stego.png'
+        ratio = w * h / k
+        stego, infos = a.hide_adaptive(cover, hidden, h, w, filename=out_name)
+        if stego == None:
+            if stats_stegano["size_min_refuse_ratio"] < ratio:
+                stats_stegano["size_min_refuse_ratio"] = ratio
+            continue
+        nb_img += 1
+
+        extracted = a.extract_image(stego, infos)
+
+        stats_stegano["mean_psnr_stego"] += tools.psnr(cover, stego)
+        stats_stegano["mean_ssim_stego"] += tools.ssim(cover, stego)
+
+        stats_stegano["mean_psnr_extract"] += tools.psnr(hidden, extracted)
+        stats_stegano["mean_ssim_extract"] += tools.ssim(hidden, extracted)
+        stats_stegano["mean_bit_acc_extract"] += tools.bit_accuracy(hidden, extracted)
+        stats_stegano["mean_rs_bpp_extract"] += tools.rs_bpp(hidden, extracted, D)
+        
+        
+        if stats_stegano["size_min_ratio"] > ratio:
+            stats_stegano["size_min_ratio"] = ratio
+
+
+
 print("Nb image : ", nb_img)
-print("Bit accuracy hidden/extrated : ", mean_bit_acc)
-print("RS-BPP hidden/extrated : ", mean_rs_bpp)
-print("PSNR cover/stego : ", mean_psnr)
-print("SSIM cover/stego : ", mean_ssim)
-
-
-
-# cover = Image.open("./assets/images/squirrel.jpg").convert("RGB")
-
-# width, height = cover.size
-# stego, infos = a.hide_adaptive(cover, hidden, height, width)
-# extracted = a.extract_image(stego, infos)
-
-# print("PSNR cover/stego : ", tools.psnr(cover, stego))
-# print("SSIM cover/stego : ", tools.ssim(cover, stego))
-# print("Bit accuracy hidden/extrated : ", tools.bit_accuracy(hidden, extracted))
-# print("RS-BPP hidden/extrated : ", tools.rs_bpp(hidden, extracted, D))
+for cle in stats_stegano:
+    if cle not in ["size_min_ratio", "size_min_refuse_ratio"]:
+        stats_stegano[cle]  /=  nb_img
+    print(cle," : ", stats_stegano[cle])
