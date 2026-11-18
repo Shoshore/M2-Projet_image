@@ -27,11 +27,15 @@ for name in sorted(listdir(FILE)):
     out_name, _ = splitext(name)
     if path == "cat.jpg":
         continue
-    nb_img += 1
+    
     cover = Image.open(FILE + path).convert("RGB")
     w, h = cover.size
     out_name += '_stego.png'
     stego, infos = a.hide_adaptive(cover, hidden, h, w, filename=out_name)
+    if stego == None:
+        continue
+    nb_img += 1
+
     extracted = a.extract_image(stego, infos)
     we, he = extracted.size  
     hidden_comp = hidden.resize((we, he))
