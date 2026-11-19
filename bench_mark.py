@@ -13,6 +13,9 @@ SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
 MODE = [18, 9, 6, 5, 4, 3]
 
+scores_cover, scores_stego = [], []
+ok_stegos = [] 
+
 actual = 0
 gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 32)
 # a.trainning(resume = True)
@@ -37,8 +40,8 @@ def redim(secret_img, cover_w, cover_h):
     return secret_img.resize((new_w, new_h), Image.LANCZOS)
 
 
-for i in range(NB_IMAGE):
-    cover_name = COVER_LIST[i]
+for i in range(1):
+    cover_name = COVER_LIST[2]
     cover_path = join(cover_name)
     cover_img = Image.open(FILE + "/cover/" + cover_path).convert("RGB")
     cover_w, cover_h = cover_img.size
@@ -46,7 +49,7 @@ for i in range(NB_IMAGE):
     stego_out_name, _ = splitext(cover_name)
     stego_out_name += '_stego.png'
 
-    secret_name = SECRET_LIST[i]
+    secret_name = SECRET_LIST[2]
     secret_path = join(secret_name)
     secret_img = Image.open(FILE + "/secret/" + secret_path).convert("RGB")
 
@@ -67,9 +70,15 @@ for i in range(NB_IMAGE):
     stats_stegano["mean_bit_acc_extract"] += tools.bit_accuracy(secret_redim_img, extracted_img)
     stats_stegano["mean_rs_bpp_extract"] += tools.rs_bpp(secret_redim_img, extracted_img, D)
 
+    scores_cover.append(tools.score_steg(cover_img))
+    scores_stego.append(tools.score_steg(stego_img))
+
 
 
 print("Nb image : ", actual)
-for cle in stats_stegano:
-    stats_stegano[cle]  /=  actual
-    print(cle," : ", stats_stegano[cle])
+if actual > 0:
+    for cle in stats_stegano:
+        stats_stegano[cle] /= actual
+        print(cle, " : ", stats_stegano[cle])
+
+    print("AUROC :", tools.auroc(scores_cover, scores_stego))
