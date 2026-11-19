@@ -123,18 +123,25 @@ class Stegano_gan:
         base = message_image.convert("RGB")
         w, h = base.size
 
-        png_buf = BytesIO()
-        base.save(png_buf, format="PNG", optimize=True)
-        if png_buf.tell() <= max_bytes:
-            return png_buf.getvalue(), (h, h), None
+        candidates = []
+        buf = BytesIO()
+        base.save(buf, format="PNG", optimize=True)
+        candidates.append((buf.getvalue(), "png"))
 
-        # raise ValueError("Le secret ne rentre pas, même très réduit.")
+        buf = BytesIO()
+        base.save(buf, format="WEBP", lossless=True, quality=100, method=6)
+        candidates.append((buf.getvalue(), "webp"))
+
+        data, tag = min(candidates, key=lambda c: len(c[0]))
+        if len(data) <= max_bytes:
+            return data, (h, w), tag
+
         return None, None, None
         
 
 
     @no_grad()
-    def hide_image(self, cover_image, message_image, height : int, width : int, nsym: int = 110, filename: str = "stego.png"):
+    def hide_image(self, cover_image, message_image, height : int, width : int, nsym: int = 110, filename: str = "stego.png", save: bool = True):
         device = self._train._device
 
         cover = cover_image.convert("RGB")
@@ -143,7 +150,7 @@ class Stegano_gan:
 
         n_blocks, k = self._rs_layout(height, width, nsym)
         payload, dim, quality = self._compress_secret(message_image, n_blocks * k)
-        if payload == None:
+        if payload is None:
             return None, None
 
         n_bytes = len(payload)
@@ -169,7 +176,8 @@ class Stegano_gan:
         stego_np = (stego_t[0].permute(1, 2, 0).cpu().numpy() * 255).round().astype(uint8)
         stego_img = Image.fromarray(stego_np)
 
-        stego_img.save(join("./assets/result/ai_based_method", filename))
+        if save:
+            stego_img.save(join("./assets/result/ai_based_method", filename))
 
         infos = {"height": height, "width": width, "nsym": nsym, "n_bytes": n_bytes, "height_m": dim[0], "width_m": dim[1], "quality": quality}
         return stego_img, infos
@@ -207,21 +215,26 @@ class Stegano_gan:
         for nsym in nsyms:
             n_blocks, k = self._rs_layout(height=height, width=width, nsym=nsym)
             payload, _, _ = self._compress_secret(message_image, n_blocks * k)
-            if payload == None:
+            if payload is None:
                 return None, None
             ref = array(Image.open(BytesIO(payload)).convert("RGB"))
             for _ in range(tries):
-                stego, infos = self.hide_image(cover_image, message_image, height=height, width=width, nsym=nsym, filename=filename)
-                if stego == None:
+                stego, infos = self.hide_image(cover_image, message_image, height=height, width=width, nsym=nsym, filename=filename, save=False)
+                if stego is None:
                     continue
-                saved = Image.open(join("./assets/result/ai_based_method", filename))
                 try:
+                    buf = BytesIO()
+                    stego.save(buf, format="PNG")
+                    buf.seek(0)
+                    saved = Image.open(buf)
+
                     rec = array(self.extract_image(saved, infos))
                     if rec.shape == ref.shape and (rec == ref).all():
+                        stego.save(join("./assets/result/ai_based_method", filename))
                         return stego, infos
                 except Exception:
                     pass
-    
+
         return None, None
 
 

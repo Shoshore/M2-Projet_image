@@ -1,7 +1,8 @@
 from numpy import mean, log10, array, float64, ndarray, unpackbits, uint8
 from PIL.Image import Image, open
 from skimage.metrics import structural_similarity
-
+from sealwatch import chi2, spa, ws
+from sklearn.metrics import roc_auc_score
 class Utils:
 
     def __init__(self):
@@ -66,3 +67,22 @@ class Utils:
         acc_pct = self.bit_accuracy(hidden_image, extracted_image) * 100.0
         p = 1.0 - (acc_pct / 100.0)
         return float(max(0.0, (1.0 - 2.0 * p) * D))
+
+
+    def score_steg(self, img) -> dict:
+        arr = array(img.convert("RGB"), dtype=uint8)
+        chans = [arr[:, :, c] for c in range(3)]
+
+        return {
+            "chi2": float(mean([chi2.attack(c)[1] for c in chans])),
+            "spa":  float(mean([spa.attack(c) for c in chans])),
+            "ws":   float(mean([ws.attack(c) for c in chans])),
+        }
+
+    def auroc(self, scores_cover: list, scores_stego: list) -> dict:
+        labels = [0] * len(scores_cover) + [1] * len(scores_stego)
+        res = {}
+        for name in scores_cover[0]:
+            scores = [s[name] for s in scores_cover] + [s[name] for s in scores_stego]
+            res[name] = float(roc_auc_score(labels, scores))
+        return res
