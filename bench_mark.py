@@ -14,7 +14,8 @@ COVER_LIST = sorted(listdir(FILE + "/cover"))
 MODE = [18, 9, 6, 5, 4, 3]
 
 scores_cover, scores_stego = [], []
-ok_stegos = [] 
+spam_cover, spam_stego = [], []
+crm_cover, crm_stego = [], []
 
 actual = 0
 gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 32)
@@ -72,6 +73,10 @@ for i in range(NB_IMAGE):
 
     scores_cover.append(tools.score_steg(cover_img))
     scores_stego.append(tools.score_steg(stego_img))
+    spam_cover.append(tools.features_spam(cover_img))
+    spam_stego.append(tools.features_spam(stego_img))
+    crm_cover.append(tools.features_crm(cover_img))
+    crm_stego.append(tools.features_crm(stego_img))
 
 
 
@@ -80,5 +85,3 @@ if actual > 0:
     for cle in stats_stegano:
         stats_stegano[cle] /= actual
         print(cle, " : ", stats_stegano[cle])
-
-    print("AUROC :", tools.auroc(scores_cover, scores_stego))
