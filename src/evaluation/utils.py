@@ -1,8 +1,12 @@
-from numpy import mean, log10, array, float64, ndarray, unpackbits, uint8
+from numpy import mean, log10, array, float64, ndarray, unpackbits, uint8, concatenate, zeros
 from PIL.Image import Image, open
 from skimage.metrics import structural_similarity
-from sealwatch import chi2, spa, ws
+from sealwatch import chi2, spa, ws, spam, crm
 from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import GroupKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
 class Utils:
 
     def __init__(self):
@@ -69,7 +73,7 @@ class Utils:
         return float(max(0.0, (1.0 - 2.0 * p) * D))
 
 
-    def score_steg(self, img) -> dict:
+    def score_steg(self, img):
         arr = array(img.convert("RGB"), dtype=uint8)
         chans = [arr[:, :, c] for c in range(3)]
 
@@ -79,10 +83,52 @@ class Utils:
             "ws":   float(mean([ws.attack(c) for c in chans])),
         }
 
-    def auroc(self, scores_cover: list, scores_stego: list) -> dict:
-        labels = [0] * len(scores_cover) + [1] * len(scores_stego)
+    def features_spam(self, img):
+        arr = array(img.convert("RGB"), dtype=uint8)
+        return concatenate([spam.extract(arr[:, :, c]) for c in range(3)])
+
+
+    def features_crm(self, img):
+        arr = array(img.convert("RGB"), dtype=uint8)
+        return crm.extract(arr)
+
+
+    def _auroc_cv(self, feats_cover: list, feats_stego: list, n_splits: int = 5):
+        n = len(feats_cover)
+        X = array(feats_cover + feats_stego, dtype=float64)
+        y = array([0] * n + [1] * n)
+        groups = array(list(range(n)) * 2)
+
+        n_splits = min(n_splits, n)
+        scores = zeros(len(y))
+        fold_auc = []
+        for tr, te in GroupKFold(n_splits=n_splits).split(X, y, groups):
+            clf = make_pipeline(StandardScaler(), LogisticRegression(C=0.01, max_iter=3000))
+            clf.fit(X[tr], y[tr])
+            scores[te] = clf.decision_function(X[te])
+            fold_auc.append(roc_auc_score(y[te], scores[te]))
+
+        return (float(roc_auc_score(y, scores)), float(mean(fold_auc)), float(array(fold_auc).std()))
+
+
+    def auroc(self, scores_cover: list, scores_stego: list, spam_cover: list = None, spam_stego: list = None, crm_cover: list = None, crm_stego: list = None) -> dict:
         res = {}
+
+        labels = [0] * len(scores_cover) + [1] * len(scores_stego)
         for name in scores_cover[0]:
             scores = [s[name] for s in scores_cover] + [s[name] for s in scores_stego]
-            res[name] = float(roc_auc_score(labels, scores))
+            res[name] = {"auroc": float(roc_auc_score(labels, scores))}
+
+        if spam_cover and spam_stego:
+            a, m, s = self._auroc_cv(spam_cover, spam_stego)
+            res["spam"] = {"auroc": a, "fold_mean": m, "fold_std": s}
+        if crm_cover and crm_stego:
+            a, m, s = self._auroc_cv(crm_cover, crm_stego)
+            res["crm"] = {"auroc": a, "fold_mean": m, "fold_std": s}
+
+        print(f"{'test':<8} {'AUROC':>8}   plis (moyenne ± écart-type)")
+        for name, r in res.items():
+            extra = f"{r['fold_mean']:.4f} ± {r['fold_std']:.4f}" if "fold_mean" in r else "-"
+            print(f"{name:<8} {r['auroc']:>8.4f}   {extra}")
+
         return res
