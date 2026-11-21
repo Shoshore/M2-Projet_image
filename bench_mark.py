@@ -8,10 +8,10 @@ tools = utils.Utils()
 
 D = 2
 FILE = "./assets/images/"
-NB_IMAGE = 50
+NB_IMAGE = 2
 SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
-MODE = [18, 9, 6, 5, 4, 3]
+MODE = [18, 10, 6, 5, 4, 3]
 
 scores_cover, scores_stego = [], []
 spam_cover, spam_stego = [], []
@@ -85,3 +85,6 @@ if actual > 0:
     for cle in stats_stegano:
         stats_stegano[cle] /= actual
         print(cle, " : ", stats_stegano[cle])
+    tools.auroc(scores_cover, scores_stego,
+                spam_cover, spam_stego,
+                crm_cover, crm_stego)

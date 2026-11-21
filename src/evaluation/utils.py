@@ -1,4 +1,4 @@
-from numpy import mean, log10, array, float64, ndarray, unpackbits, uint8, concatenate, zeros
+from numpy import mean, log10, array, float64, ndarray, unpackbits, uint8, concatenate, zeros, asarray, atleast_1d, hstack
 from PIL.Image import Image, open
 from skimage.metrics import structural_similarity
 from sealwatch import chi2, spa, ws, spam, crm
@@ -83,14 +83,32 @@ class Utils:
             "ws":   float(mean([ws.attack(c) for c in chans])),
         }
 
+    def _to_vec(self, res):
+        parts = []
+
+        def walk(v):
+            if isinstance(v, dict):
+                for x in v.values():
+                    walk(x)
+            elif isinstance(v, (tuple, list)):
+                for x in v:
+                    walk(x)
+            else:
+                parts.append(atleast_1d(asarray(v, dtype=float64)).ravel())
+
+        walk(res)
+        return hstack(parts)
+
+
     def features_spam(self, img):
         arr = array(img.convert("RGB"), dtype=uint8)
-        return concatenate([spam.extract(arr[:, :, c]) for c in range(3)])
+        vecs = [self._to_vec(spam.extract(arr[:, :, c])) for c in range(3)]
+        return concatenate(vecs) 
 
 
     def features_crm(self, img):
         arr = array(img.convert("RGB"), dtype=uint8)
-        return crm.extract(arr)
+        return self._to_vec(crm.extract(arr))
 
 
     def _auroc_cv(self, feats_cover: list, feats_stego: list, n_splits: int = 5):
