@@ -8,10 +8,10 @@ tools = utils.Utils()
 
 D = 2
 FILE = "./assets/images/"
-NB_IMAGE = 2
+NB_IMAGE = 50
 SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
-MODE = [18, 10, 6, 5, 4, 3]
+MODE = [18, 9.5, 6, 5, 4, 3]
 
 scores_cover, scores_stego = [], []
 spam_cover, spam_stego = [], []
@@ -57,6 +57,7 @@ for i in range(NB_IMAGE):
     secret_redim_img = redim(secret_img, cover_w, cover_h)
 
     stego_img, infos = gan.hide_adaptive(cover_img, secret_redim_img, cover_h, cover_w, filename = stego_out_name)
+    print("Tour : ", i, " / ", NB_IMAGE)
     if stego_img == None:
         continue
     actual += 1
