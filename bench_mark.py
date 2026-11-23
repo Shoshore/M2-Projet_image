@@ -5,7 +5,6 @@ from os import listdir
 from os.path import splitext, join
 from math import sqrt
 
-
 def redim(secret_img, cover_w, cover_h, MODE):
     ratio = MODE[D - 1]
     sw, sh = secret_img.size
@@ -88,16 +87,16 @@ D = 4
 FILE = "./assets/images/"
 SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
-MODE = [18, 9.5, 8, 7.5, 4, 3]
+MODE = [18, 9.5, 8, 6, 4, 3]
 
-NB_IMAGE = 2
+NB_IMAGE = 50
 
-gan = stegano_gan.Stegano_gan(D = D, not_train = False, max_epoch = 8, wmse = 5)
+gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 29, wmse = 5)
 
 # cover = Image.open(FILE + "/cover/" + COVER_LIST[0]).convert("RGB")
 # w, h = cover.size
 # print("chan acc :", gan.measure_channel_acc(cover, h, w))
 
 # gan.trainning(resume = True)
-# bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, 2)
+bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, NB_IMAGE)
 
