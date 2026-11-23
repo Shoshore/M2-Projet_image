@@ -2,10 +2,11 @@ from torch.nn import Module, BCEWithLogitsLoss, MSELoss
 
 class Loss(Module):
 
-    def __init__(self):
+    def __init__(self, wmse = 100.0):
         super().__init__()
         self.bce_loss = BCEWithLogitsLoss()
         self.mse_loss = MSELoss()
+        self.wmse = wmse
 
     def loss_decoder(self, output_D, M):
        return self.bce_loss(output_D, M)
@@ -19,7 +20,7 @@ class Loss(Module):
         L_d = self.loss_decoder(output_D, M)
         L_s = self.loss_stego(cover_image, encoded_image)
         L_r = critic_encoded.mean()
-        total_loss = L_d + 100.0 * L_s + L_r # Why 100 ? idk they did on their repo and it improve result
+        total_loss = L_d + self.wmse * L_s + L_r # Why 100 ? idk they did on their repo and it improve result
         return total_loss
 
     

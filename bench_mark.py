@@ -84,7 +84,7 @@ def bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, NB_IMAGE):
 
 tools = utils.Utils()
 
-D = 2
+D = 4
 FILE = "./assets/images/"
 SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
@@ -92,8 +92,12 @@ MODE = [18, 9.5, 8, 7.5, 4, 3]
 
 NB_IMAGE = 2
 
-gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 32)
+gan = stegano_gan.Stegano_gan(D = D, not_train = False, max_epoch = 8, wmse = 5)
 
-# gan.trainning(resume = False)
+# cover = Image.open(FILE + "/cover/" + COVER_LIST[0]).convert("RGB")
+# w, h = cover.size
+# print("chan acc :", gan.measure_channel_acc(cover, h, w))
+
+# gan.trainning(resume = True)
 # bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, 2)
 

@@ -14,12 +14,12 @@ from io import BytesIO
 
 class Stegano_gan:
 
-    def __init__(self, D: int = 2, not_train = True, max_epoch = 32):
+    def __init__(self, D: int = 2, not_train = True, max_epoch = 32, wmse = 100):
         self.D = D
         self._encoder = encoding.Encoder(D = self.D)
         self._decoder = decoding.Decoding(D = self.D)
         self._critic = critic.Critic()
-        self._loss = loss.Loss()
+        self._loss = loss.Loss(wmse)
         self._train = train.Train(self._loss, self._encoder, self._decoder, self._critic, max_epoch)
         self.current_epoch = 1
         if not_train:
@@ -247,3 +247,18 @@ class Stegano_gan:
         self._decoder = decoding.Decoding(D = self.D)
         self._critic = critic.Critic()
         self.load_model()
+
+    @no_grad()
+    def measure_channel_acc(self, cover_image, height, width):
+        device = self._train._device
+        cover = cover_image.convert("RGB")
+        cover_t = from_numpy(array(cover)).permute(2, 0, 1).float() / 255.0
+        cover_t = (cover_t * 2 - 1).unsqueeze(0).to(device)
+
+        bits = random.randint(0, 2, self.D * height * width, dtype=uint8)
+        msg = from_numpy(bits).float().reshape(1, self.D, height, width).to(device)
+
+        stego_t = self._encoder(cover_t, msg).float().clamp(-1, 1)
+        pred = (self._decoder(stego_t) > 0).float()
+        acc = (pred == msg).float().mean(dim=(0, 2, 3))
+        return acc.cpu().numpy()
