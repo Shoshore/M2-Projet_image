@@ -4,34 +4,9 @@ from PIL import Image
 from os import listdir
 from os.path import splitext, join
 from math import sqrt
-tools = utils.Utils()
-
-D = 2
-FILE = "./assets/images/"
-NB_IMAGE = 50
-SECRET_LIST = sorted(listdir(FILE + "/secret"))
-COVER_LIST = sorted(listdir(FILE + "/cover"))
-MODE = [18, 9.5, 6, 5, 4, 3]
-
-scores_cover, scores_stego = [], []
-spam_cover, spam_stego = [], []
-crm_cover, crm_stego = [], []
-
-actual = 0
-gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 32)
-# a.trainning(resume = True)
 
 
-stats_stegano = {
-    "mean_psnr_stego" : 0,
-    "mean_ssim_stego" : 0,
-    "mean_psnr_extract" : 0,
-    "mean_ssim_extract" : 0,
-    "mean_bit_acc_extract" : 0,
-    "mean_rs_bpp_extract" : 0,
-}
-
-def redim(secret_img, cover_w, cover_h):
+def redim(secret_img, cover_w, cover_h, MODE):
     ratio = MODE[D - 1]
     sw, sh = secret_img.size
     target_pixels = (cover_w * cover_h) / ratio
@@ -41,51 +16,84 @@ def redim(secret_img, cover_w, cover_h):
     return secret_img.resize((new_w, new_h), Image.LANCZOS)
 
 
-for i in range(NB_IMAGE):
-    cover_name = COVER_LIST[i]
-    cover_path = join(cover_name)
-    cover_img = Image.open(FILE + "/cover/" + cover_path).convert("RGB")
-    cover_w, cover_h = cover_img.size
+def bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, NB_IMAGE):
+    scores_cover, scores_stego = [], []
+    spam_cover, spam_stego = [], []
+    crm_cover, crm_stego = [], []
 
-    stego_out_name, _ = splitext(cover_name)
-    stego_out_name += '_stego.png'
+    stats_stegano = {
+        "mean_psnr_stego" : 0,
+        "mean_ssim_stego" : 0,
+        "mean_psnr_extract" : 0,
+        "mean_ssim_extract" : 0,
+        "mean_bit_acc_extract" : 0,
+        "mean_rs_bpp_extract" : 0,
+    }
+    actual = 0
+    
+    for i in range(NB_IMAGE):
+        cover_name = COVER_LIST[i]
+        cover_path = join(cover_name)
+        cover_img = Image.open(FILE + "/cover/" + cover_path).convert("RGB")
+        cover_w, cover_h = cover_img.size
 
-    secret_name = SECRET_LIST[i]
-    secret_path = join(secret_name)
-    secret_img = Image.open(FILE + "/secret/" + secret_path).convert("RGB")
+        stego_out_name, _ = splitext(cover_name)
+        stego_out_name += '_stego.png'
 
-    secret_redim_img = redim(secret_img, cover_w, cover_h)
+        secret_name = SECRET_LIST[i]
+        secret_path = join(secret_name)
+        secret_img = Image.open(FILE + "/secret/" + secret_path).convert("RGB")
 
-    stego_img, infos = gan.hide_adaptive(cover_img, secret_redim_img, cover_h, cover_w, filename = stego_out_name)
-    print("Tour : ", i, " / ", NB_IMAGE)
-    if stego_img == None:
-        continue
-    actual += 1
+        secret_redim_img = redim(secret_img, cover_w, cover_h, MODE)
 
-    extracted_img = gan.extract_image(stego_img, infos)
+        stego_img, infos = gan.hide_adaptive(cover_img, secret_redim_img, cover_h, cover_w, filename = stego_out_name)
+        print("Tour : ", i, " / ", NB_IMAGE)
+        if stego_img == None:
+            print("refus")
+            continue
+        actual += 1
 
-    stats_stegano["mean_psnr_stego"] += tools.psnr(cover_img, stego_img)
-    stats_stegano["mean_ssim_stego"] += tools.ssim(cover_img, stego_img)
+        extracted_img = gan.extract_image(stego_img, infos)
 
-    stats_stegano["mean_psnr_extract"] += tools.psnr(secret_redim_img, extracted_img)
-    stats_stegano["mean_ssim_extract"] += tools.ssim(secret_redim_img, extracted_img)
-    stats_stegano["mean_bit_acc_extract"] += tools.bit_accuracy(secret_redim_img, extracted_img)
-    stats_stegano["mean_rs_bpp_extract"] += tools.rs_bpp(secret_redim_img, extracted_img, D)
+        stats_stegano["mean_psnr_stego"] += tools.psnr(cover_img, stego_img)
+        stats_stegano["mean_ssim_stego"] += tools.ssim(cover_img, stego_img)
 
-    scores_cover.append(tools.score_steg(cover_img))
-    scores_stego.append(tools.score_steg(stego_img))
-    spam_cover.append(tools.features_spam(cover_img))
-    spam_stego.append(tools.features_spam(stego_img))
-    crm_cover.append(tools.features_crm(cover_img))
-    crm_stego.append(tools.features_crm(stego_img))
+        stats_stegano["mean_psnr_extract"] += tools.psnr(secret_redim_img, extracted_img)
+        stats_stegano["mean_ssim_extract"] += tools.ssim(secret_redim_img, extracted_img)
+        stats_stegano["mean_bit_acc_extract"] += tools.bit_accuracy(secret_redim_img, extracted_img)
+        stats_stegano["mean_rs_bpp_extract"] += tools.rs_bpp(secret_redim_img, extracted_img, D)
+
+        scores_cover.append(tools.score_steg(cover_img))
+        scores_stego.append(tools.score_steg(stego_img))
+        spam_cover.append(tools.features_spam(cover_img))
+        spam_stego.append(tools.features_spam(stego_img))
+        crm_cover.append(tools.features_crm(cover_img))
+        crm_stego.append(tools.features_crm(stego_img))
 
 
 
-print("Nb image : ", actual)
-if actual > 0:
-    for cle in stats_stegano:
-        stats_stegano[cle] /= actual
-        print(cle, " : ", stats_stegano[cle])
-    tools.auroc(scores_cover, scores_stego,
-                spam_cover, spam_stego,
-                crm_cover, crm_stego)
+    print("Nb image : ", actual)
+    if actual > 0:
+        for cle in stats_stegano:
+            stats_stegano[cle] /= actual
+            print(cle, " : ", stats_stegano[cle])
+        tools.auroc(scores_cover, scores_stego,
+                    spam_cover, spam_stego,
+                    crm_cover, crm_stego)
+
+
+tools = utils.Utils()
+
+D = 2
+FILE = "./assets/images/"
+SECRET_LIST = sorted(listdir(FILE + "/secret"))
+COVER_LIST = sorted(listdir(FILE + "/cover"))
+MODE = [18, 9.5, 8, 7.5, 4, 3]
+
+NB_IMAGE = 2
+
+gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 32)
+
+# gan.trainning(resume = False)
+# bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, 2)
+

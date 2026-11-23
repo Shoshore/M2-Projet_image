@@ -6,9 +6,8 @@ from . import train
 from . import train_dataset
 from os.path import join, exists
 from os import urandom
-from torch import save, load, no_grad, from_numpy
-from torch.cuda import is_available
-from numpy import array, uint8, unpackbits, random, concatenate, zeros, packbits, frombuffer, unpackbits
+from torch import save, load, no_grad, from_numpy, cuda
+from numpy import array, uint8, unpackbits, random, concatenate, packbits, frombuffer, unpackbits
 from PIL import Image
 from reedsolo import RSCodec, ReedSolomonError
 from io import BytesIO
@@ -43,14 +42,14 @@ class Stegano_gan:
             'opt_ED_state': self._train.optimizer_ED.state_dict(),
             'opt_C_state': self._train.optimizer_C.state_dict()
         }
-        path = join(save_dir, f"steganogan_checkpoint_{self.D}.pth")
+        path = join(save_dir, f"steganogan_checkpoint_{epoch}_{self.D}.pth")
         save(checkpoint, path)
         print(f"-> Checkpoint de l'époque {epoch} sauvegardé dans : {path}")
 
 
     def load_checkpoint(self):
         device = "cpu"
-        if is_available():
+        if cuda.is_available():
             print("GPU")
             device = "cuda"
 
@@ -211,14 +210,16 @@ class Stegano_gan:
         return Image.open(BytesIO(bytes(data[:n_bytes]))).convert("RGB")
 
 
-    def hide_adaptive(self, cover_image, message_image, height : int = 256, width: int = 256, nsyms=(64, 110, 140, 180), tries: int = 2, filename: str = "stego.png"):
+    def hide_adaptive(self, cover_image, message_image, height, width, nsyms=(64, 110, 140, 180), tries: int = 2, filename: str = "stego.png"):
         for nsym in nsyms:
             n_blocks, k = self._rs_layout(height=height, width=width, nsym=nsym)
             payload, _, _ = self._compress_secret(message_image, n_blocks * k)
             if payload is None:
-                return None, None
+                continue
+
             ref = array(Image.open(BytesIO(payload)).convert("RGB"))
-            for _ in range(tries):
+
+            for t in range(tries):
                 stego, infos = self.hide_image(cover_image, message_image, height=height, width=width, nsym=nsym, filename=filename, save=False)
                 if stego is None:
                     continue
@@ -232,8 +233,8 @@ class Stegano_gan:
                     if rec.shape == ref.shape and (rec == ref).all():
                         stego.save(join("./assets/result/ai_based_method", filename))
                         return stego, infos
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"nsym={nsym} essai {t} : erreur d'extraction ({e})")
 
         return None, None
 
