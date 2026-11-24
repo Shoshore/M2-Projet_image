@@ -87,11 +87,11 @@ D = 4
 FILE = "./assets/images/"
 SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
-MODE = [18, 9.5, 8, 6, 4, 3]
-
+MODE = [18, 9.5, 8, 6.3, 4, 3]
+WSME_MODE = [-1, 100, -1, 5, -1, -1]
 NB_IMAGE = 50
 
-gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 29, wmse = 5)
+gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 29, wmse = WSME_MODE[D - 1])
 
 # cover = Image.open(FILE + "/cover/" + COVER_LIST[0]).convert("RGB")
 # w, h = cover.size
