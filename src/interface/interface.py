@@ -81,6 +81,11 @@ class optionCanvas(customCanvas):
         self.button=Button(self.canvas, text="process", command=self.main.generate_results, anchor=W)
         self.button_window = self.canvas.create_window(5, 40, anchor=NW, window=self.button)
 
+        self.is_color = BooleanVar()
+        self.check = Checkbutton(self.canvas, text='Color',variable=self.is_color, onvalue=1, offvalue=0)
+        self.is_color_check = self.canvas.create_window(5, 75, anchor=NW, window=self.check)
+
+
     def resizing(self):
         super().resizing()
         if self.img != None:
@@ -122,7 +127,7 @@ class resultCanvas(customCanvas):
 
     def process_algo2(self):
         self.button.hidden = True
-        self.raw_image = self.main.algo2(self.main.canvas1.raw_image, self.main.canvas2.raw_image)
+        self.raw_image = self.main.algo2(self.main.canvas1.filepath, self.main.canvas2.filepath, self.main.canvas3.is_color_check.get())
         self.create_image()
 
 class mainWindow:
