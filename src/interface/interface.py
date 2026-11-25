@@ -72,9 +72,9 @@ class optionCanvas(customCanvas):
         self.img = None
         self.filepath = None
 
-        options = ["Algo1", "Algo2"]  
-        opt = StringVar(value="Algo1")  
-        self.optionMenu = OptionMenu(self.canvas, opt, *options)
+        self.options = ["Méthode Stegano GAN", "Méthode Homomorphique"]  
+        self.opt = StringVar(value=self.options[0])  
+        self.optionMenu = OptionMenu(self.canvas, self.opt, *self.options)
         self.options_window = self.canvas.create_window(5, 5, anchor=NW, window=self.optionMenu)
 
         self.txt = self.canvas.create_text(0, 60, text="")
@@ -111,15 +111,26 @@ class resultCanvas(customCanvas):
 
     def openimage(self):
         w, h = self.main.canvas1.raw_image.size
-        self.raw_image, infos = self.main.algo(self.main.canvas1.raw_image, self.main.canvas2.raw_image, h, w, filename="gloubi.png")
+        self.raw_image, infos = self.main.algo1(self.main.canvas1.raw_image, self.main.canvas2.raw_image, h, w, filename="result_file.png")
         self.create_image()
 
+    def process_algo1(self):
+        self.button.hidden = True
+        w, h = self.main.canvas1.raw_image.size
+        self.raw_image, infos = self.main.algo1(self.main.canvas1.raw_image, self.main.canvas2.raw_image, h, w, filename="result_file.png")
+        self.create_image()
+
+    def process_algo2(self):
+        self.button.hidden = True
+        self.raw_image, infos = self.main.algo2(self.main.canvas1.raw_image, self.main.canvas2.raw_image)
+        self.create_image()
 
 class mainWindow:
-    def __init__(self, algo):
+    def __init__(self, algo1, algo2):
         self.button_height = 20
 
-        self.algo = algo
+        self.algo1 = algo1
+        self.algo2 = algo2
 
         self.window = Tk()
         self.window.title('Projet Image')
@@ -140,7 +151,10 @@ class mainWindow:
         self.window.mainloop()
 
     def generate_results(self):
-        print("bon ben voila")
+        if self.canvas3.opt.get() == "Méthode Stegano GAN":
+            self.canvas4.process_algo1()
+        elif self.canvas3.opt.get() == "Méthode Homomorphique":
+            self.canvas4.process_algo2()
 
     def resizing(self, event):
             if event.widget == self.window:

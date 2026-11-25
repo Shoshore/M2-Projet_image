@@ -209,6 +209,11 @@ def entropy(image: np.ndarray) -> float:
     p = p[p > 0]
     return float(-(p * np.log2(p)).sum())
 
+def encryption(secret, host):
+    aes = AES_ECB(get_random_bytes(32))
+    paillier = PaillierCryptosystem(13, 23)
+    return encrypt_transform(secret, host, aes, paillier)
+
 if __name__ == "__main__":
     import sys
 
