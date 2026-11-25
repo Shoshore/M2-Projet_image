@@ -88,15 +88,15 @@ FILE = "./assets/images/"
 SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
 MODE = [18, 9.5, 8, 6.3, 4, 3]
-WSME_MODE = [-1, 100, -1, 5, -1, -1]
-NB_IMAGE = 50
+WSME_MODE = [-1, 100, -1, 4.7, -1, -1]
+NB_IMAGE = 1
 
-gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 29, wmse = WSME_MODE[D - 1])
+gan = stegano_gan.Stegano_gan(D = D, not_train = False, max_epoch = 55, wmse = WSME_MODE[D - 1])
 
 # cover = Image.open(FILE + "/cover/" + COVER_LIST[0]).convert("RGB")
 # w, h = cover.size
 # print("chan acc :", gan.measure_channel_acc(cover, h, w))
 
-# gan.trainning(resume = True)
-bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, NB_IMAGE)
+gan.trainning(resume = True)
+# bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, NB_IMAGE)
 
