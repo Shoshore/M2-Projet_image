@@ -5,6 +5,43 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
 from PIL import Image
+import functools
+import sys
+import threading
+import time
+
+def live_timer(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        stop_event = threading.Event()
+        start_time = time.perf_counter()
+
+        def update_clock():
+            while not stop_event.is_set():
+                elapsed = time.perf_counter() - start_time
+                sys.stdout.write(f"\rRunning {func.__name__}... {elapsed:.2f}s")
+                sys.stdout.flush()
+                time.sleep(0.05)  # Update every 50ms
+
+        # Start the timer thread in the background
+        timer_thread = threading.Thread(target=update_clock, daemon=True)
+        timer_thread.start()
+
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            # Stop the timer thread and print the final exact duration
+            stop_event.set()
+            timer_thread.join()
+            final_time = time.perf_counter() - start_time
+            sys.stdout.write(
+                f"\rFinished {func.__name__} in {final_time:.2f}s   \n"
+            )
+            sys.stdout.flush()
+
+        return result
+
+    return wrapper
 
 class AES_ECB:
     def __init__(self, key: bytes):
@@ -66,6 +103,7 @@ class PaillierCryptosystem:
     def decrypt_block(self, c: int) -> int:
         return (self.__L(pow(c, self.lam, self.n_squared)) * self.mu) % self.n
 
+    @live_timer
     def r_candidates(self, max_iterations: int = 500, seed: int = 0):
         phi = (self.p - 1) * (self.q - 1)
         if phi <= max_iterations:
@@ -107,10 +145,14 @@ def load_image(path: str, color: bool):
 
     return np_image, shape
 
-def save_image(image_array: np.ndarray, shape: tuple, path: str):
+def array_to_img(image_array: np.ndarray, shape: tuple):
     reshaped_array = np.asarray(image_array, dtype=np.uint8).reshape(shape)
     image = Image.fromarray(reshaped_array)
-    image.save(path)
+    return image
+
+def save_image(image_array: np.ndarray, shape: tuple, path: str):
+    array_to_img(image_array, shape).save(path)
+
 
 def split_into_blocks(data: np.ndarray, alpha_prime: int) -> np.ndarray:
     bits = np.unpackbits(data)
@@ -126,6 +168,7 @@ def join_blocks(blocks: np.ndarray, alpha_prime: int, n_bytes: int) -> np.ndarra
     bits = ((blocks[:, None] >> shifts[None, :]) & 1).astype(np.uint8).ravel()
     return np.packbits(bits[:8 * n_bytes])
 
+@live_timer
 def encrypt_transform(secret_image: np.ndarray, host_image: np.ndarray, aes: AES_ECB, paillier: PaillierCryptosystem, max_iterations: int = 500) -> np.ndarray:
     encrypted = aes.encrypt_array(np.ascontiguousarray(secret_image).ravel().tobytes())
 
@@ -144,6 +187,7 @@ def encrypt_transform(secret_image: np.ndarray, host_image: np.ndarray, aes: AES
     transformed_pixels[:n_pixels_used] = np.frombuffer(b"".join(int(e_i).to_bytes(paillier.pixels_per_encrypted_block, "big") for e_i in e_blocks), dtype=np.uint8)
     return transformed_pixels.reshape(host_image.shape)
 
+@live_timer
 def decrypt_transform(transformed_image: np.ndarray, secret_shape: tuple, aes: AES_ECB, paillier: PaillierCryptosystem) -> np.ndarray:
     n_encrypted = int(np.prod(secret_shape))
     n_blocks = -(-8 * n_encrypted // paillier.alpha_prime)
