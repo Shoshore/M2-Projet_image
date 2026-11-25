@@ -122,7 +122,7 @@ class resultCanvas(customCanvas):
 
     def process_algo2(self):
         self.button.hidden = True
-        self.raw_image, infos = self.main.algo2(self.main.canvas1.raw_image, self.main.canvas2.raw_image)
+        self.raw_image = self.main.algo2(self.main.canvas1.raw_image, self.main.canvas2.raw_image)
         self.create_image()
 
 class mainWindow:
