@@ -89,14 +89,14 @@ SECRET_LIST = sorted(listdir(FILE + "/secret"))
 COVER_LIST = sorted(listdir(FILE + "/cover"))
 MODE = [18, 9, 6.5, 5, 4, 3]
 WSME_MODE = [-1, 100, 20.0, 4.7, -1, -1]
-NB_IMAGE = 50
+NB_IMAGE = 1
 
-gan = stegano_gan.Stegano_gan(D = D, not_train = False, max_epoch = 8, wmse = WSME_MODE[D - 1])
+gan = stegano_gan.Stegano_gan(D = D, not_train = True, max_epoch = 38, wmse = WSME_MODE[D - 1])
 
 # cover = Image.open(FILE + "/cover/" + COVER_LIST[0]).convert("RGB")
 # w, h = cover.size
 # print("chan acc :", gan.measure_channel_acc(cover, h, w))
 
-gan.trainning(resume = False)
-# bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, NB_IMAGE)
+# gan.trainning(resume = True)
+bench(tools, gan, FILE, SECRET_LIST, COVER_LIST, MODE, NB_IMAGE)
 
